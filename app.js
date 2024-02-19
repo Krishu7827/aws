@@ -97,23 +97,21 @@ app.post('/',  upload.single('productimage'),async (req, res) => {
    const recognition = new Aws.Rekognition()
  
 
-  function compareFaces() {
+// Modify the compareFaces function to accept source and target images as parameters
+function compareFaces(sourceImage, targetImage) {
     const params = {
-        SourceImage: {
-          S3Object: {
-            Bucket: process.env.AWS_BUCKET_NAME,
-            Name: 'Aamir-Khan.png'
-          }
-        },
-        TargetImage: {
-          S3Object: {
-            Bucket: process.env.AWS_BUCKET_NAME,
-            Name: 'DepvgmaZ.jpg'
-          }
-        },
-        SimilarityThreshold: 97 // Adjust threshold as needed
-      };
-      
+      SourceImage: {
+        S3Object: {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Name: sourceImage // Assuming sourceImage is the object uploaded from the frontend
+        }
+      },
+      TargetImage: {
+        Bytes: targetImage // Assuming targetImage is the object uploaded from the frontend
+      },
+      SimilarityThreshold: 97 // Adjust threshold as needed
+    };
+  
     recognition.compareFaces(params, (err, data) => {
       if (err) {
         console.log(err, err.stack); // an error occurred
@@ -129,10 +127,21 @@ app.post('/',  upload.single('productimage'),async (req, res) => {
     });
   }
   
+  // Update Express route to handle the upload of source and target images from frontend
+  app.post('/compareFaces', upload.single('targetImage'), (req, res) => {
+    try {
+      // Access source and target images uploaded from frontend
+     
   
-  compareFaces()
-
+      // Call compareFaces function with source and target images
+      compareFaces('Krishna.jpg', req.file.buffer);
   
+      res.status(200).send('Comparison started successfully.');
+    } catch (error) {
+      console.error('Error comparing faces:', error);
+      res.status(500).send('Error comparing faces.');
+    }
+  });
   
 
 
