@@ -22,6 +22,7 @@ function createEmployeeModel(userReqData, callBack) {
   "call spAddEditemployee('" + JSON.stringify(userReqData) + "')";
   dbConn.query(query, (err, results, fields) => {
     if (err) {
+     console.log(err);
       console.log("Error while creating news");
       callBack(err);
     } else {
