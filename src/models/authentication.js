@@ -63,7 +63,7 @@ const UploadImage = async(req,callBack)=>{
         }
       });
     });
-
+console.log(data.Location)
     // Constructing the SQL query to update the person table
     const Profile = `UPDATE person SET profilepic = '${data.Location}' WHERE personid = '${personid}'`;
 
