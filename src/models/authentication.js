@@ -204,6 +204,7 @@ console.log(req.file)
        return callBack(err)
       }else{
         console.log(result[0].personid)
+       console.log(req.file);
         const data = await faceRecokgnition(`${result[0].personid}`, req.file.buffer);
 
          if(data === 'Faces are similar'){
