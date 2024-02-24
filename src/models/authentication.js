@@ -194,7 +194,7 @@ const CompareFaces = async (req, callBack) => {
 console.log(req.file)
   const {employeeid} = req.query
 
-  const query = `select personid from Person where empid = '${employeeid}'`
+  const query = `select personid from person where empid = '${employeeid}'`
 
   try {
     dbConn.query(query,async(err,result)=>{
