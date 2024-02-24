@@ -11,7 +11,7 @@ require('dotenv').config()
 AWS.config.update({region: 'ap-south-1'})
 
 const credentials = new AWS.Credentials({
- accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+ accessKeyId: process.env.ACCESS_KEY_ID,
  secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
 })
 
@@ -40,7 +40,7 @@ const UploadImage = async(req,callBack)=>{
     const { personid } = req.body;
       console.log(personid)
     const s3 = new AWS.S3({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      accessKeyId: process.env.ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
     });
 
@@ -92,7 +92,7 @@ const UploadJoiningForms = async(req,callBack)=>{
     const { personid } = req.body;
       console.log(personid)
     const s3 = new AWS.S3({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      accessKeyId: process.env.ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
     });
 
@@ -138,7 +138,7 @@ const UploadJoiningForms = async(req,callBack)=>{
 AWS.config.update({region: 'ap-south-1'})
 
 const credential = new AWS.Credentials({
- accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+ accessKeyId: process.env.ACCESS_KEY_ID,
  secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
 })
 
