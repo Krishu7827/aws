@@ -11,7 +11,7 @@ require('dotenv').config()
 AWS.config.update({region: 'ap-south-1'})
 
 const credentials = new AWS.Credentials({
- accessKeyId: process.env.ACCESS_KEY_ID,
+ accessKeyId: process.env.AWS_ACCESS_KEY_ID,
  secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
 })
 
@@ -37,10 +37,10 @@ const UploadImage = async(req,callBack)=>{
   try {
     console.log("HIIIIIIIIIIIIIIIIIIIIIIIIII");
     console.log(req.file);
-    const { personid } = req.body;
+    const { personid } = req.query;
       console.log(personid)
     const s3 = new AWS.S3({
-      accessKeyId: process.env.ACCESS_KEY_ID,
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
     });
 
@@ -65,7 +65,7 @@ const UploadImage = async(req,callBack)=>{
     });
 console.log(data.Location)
     // Constructing the SQL query to update the person table
-    const Profile = `UPDATE person SET profilepic = '${data.Location}' WHERE personid = '${personid}'`;
+    const Profile = `UPDATE person SET profilepic = '${data.Location}' WHERE empid = '${personid}'`;
 
     // Executing the SQL query
     await new Promise((resolve, reject) => {
@@ -92,7 +92,7 @@ const UploadJoiningForms = async(req,callBack)=>{
     const { personid } = req.body;
       console.log(personid)
     const s3 = new AWS.S3({
-      accessKeyId: process.env.ACCESS_KEY_ID,
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
     });
 
@@ -138,7 +138,7 @@ const UploadJoiningForms = async(req,callBack)=>{
 AWS.config.update({region: 'ap-south-1'})
 
 const credential = new AWS.Credentials({
- accessKeyId: process.env.ACCESS_KEY_ID,
+ accessKeyId: process.env.AWS_ACCESS_KEY_ID,
  secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
 })
 
@@ -191,49 +191,62 @@ const faceRecokgnition = (sourceImage,targetImage)=>{
 
 /*** Controller for CompareFace route */
 const CompareFaces = async (req, callBack) => {
-console.log(req.file)
-  const {employeeid} = req.query
+console.log(req.file,req.query)
+const {employeeid} = req.query
 
-  const query = `select personid from person where empid = '${employeeid}'`
+  //const query = `select personid from person where empid = '${employeeid}'`
+  try{
+  const data = await faceRecokgnition(`${employeeid}`, req.file.buffer);
+  if(data === 'Faces are similar'){
+    var query =
+    "call spAddAttendance('" + employeeid + "')";
+    dbConn.query(query, (err, results, fields) => {
+      if (err) {
+       throw err
+        
+      } else {
+        console.log("Attendance successfully.");
+        
+      }
+     // return callBack('Attendance Marked')
+    });
+    return  callBack('Attendance Marked')
+   }else{
+    return callBack('Face is not similar')
+   }
+   }catch(err){
+    return callBack({msg:'employee is not in database'})
+   }
 
-  try {
-    dbConn.query(query,async(err,result)=>{
-      if(err){
+//   try {
+//     dbConn.query(query,async(err,result)=>{
+//       if(err){
 
        
-       return callBack(err)
-      }else{
-        console.log(result[0].personid)
-       console.log(req.file);
-        const data = await faceRecokgnition(`${result[0].personid}`, req.file.buffer);
-
-         if(data === 'Faces are similar'){
-          var query =
-          "call spAddAttendance('" + result[0].personid + "')";
-          dbConn.query(query, (err, results, fields) => {
-            if (err) {
-              console.log("Error while creating attendance",err);
-              
-            } else {
-              console.log("Attendance successfully.");
-              
-            }
-            return callBack('Attendance Marked')
-          });
-
-         }else{
-          return callBack('Face is not similar')
-         }
-      }
-      // const data = await faceRecokgnition( req.file.buffer);
+//        return callBack(err)
+//       }else{
+//        // console.log(result[0].personid)
+//        try{
+       
+//           console.log(result[0].personid)
+//           console.log(req.file);
+         
+   
+         
+//        }catch(err){
+//          return callBack(err)
+//        }
+    
+//       }
+//       // const data = await faceRecokgnition( req.file.buffer);
 
      
-    })
+//     })
    
-  } catch (error) {
-    console.error('Error comparing faces:', error);
- return  callBack(error)
-  }
+//   } catch (error) {
+//     console.error('Error comparing faces:', error);
+//  return  callBack(error)
+//   }
 };
 
 function getEmployeeDataModel(userReqData, callBack) {
