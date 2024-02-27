@@ -215,7 +215,7 @@ const {employeeid} = req.query
     return callBack('Face is not similar')
    }
    }catch(err){
-    return callBack({msg:'employee is not in database'})
+    return callBack({msg:err})
    }
 
 //   try {
