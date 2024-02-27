@@ -47,7 +47,7 @@ const UploadImage = async(req,callBack)=>{
     const params = {
       Bucket: process.env.AWS_BUCKET_1,
       Key: personid,
-      Body: req.file.buffer,
+      Body: `${req.file.buffer}`,
       ACL: "public-read-write",
       ContentType: req.body.FileFormat
     };
