@@ -47,7 +47,7 @@ const UploadImage = async(req,callBack)=>{
     const params = {
       Bucket: process.env.AWS_BUCKET_1,
       Key: personid,
-      Body: req.file.buffer,
+      Body: req.file,
       ACL: "public-read-write",
       ContentType: req.body.FileFormat
     };
@@ -59,11 +59,12 @@ const UploadImage = async(req,callBack)=>{
           console.log(err)
           reject(err);
         } else {
+         
           resolve(data);
         }
       });
     });
-console.log(data.Location)
+//console.log(data.Location)
     // Constructing the SQL query to update the person table
     const Profile = `UPDATE person SET profilepic = '${data.Location}' WHERE empid = '${personid}'`;
 
