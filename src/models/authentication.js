@@ -33,12 +33,12 @@ function createEmployeeModel(userReqData, callBack) {
 };
 
 
-const UploadImage = async(req,callBack)=>{
+const UploadImage = async(req, callBack) => {
   try {
     console.log("HIIIIIIIIIIIIIIIIIIIIIIIIII");
     console.log(req.file.buffer);
     const { personid } = req.query;
-      console.log(personid)
+    console.log(personid)
     const s3 = new AWS.S3({
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
@@ -47,7 +47,7 @@ const UploadImage = async(req,callBack)=>{
     const params = {
       Bucket: process.env.AWS_BUCKET_1,
       Key: personid,
-      Body: `${req.file.buffer}`,
+      Body: req.file.buffer, // Assuming req.file.buffer is a Buffer type
       ACL: "public-read-write",
       ContentType: req.body.FileFormat
     };
@@ -59,12 +59,11 @@ const UploadImage = async(req,callBack)=>{
           console.log(err)
           reject(err);
         } else {
-         
           resolve(data);
         }
       });
     });
-//console.log(data.Location)
+
     // Constructing the SQL query to update the person table
     const Profile = `UPDATE person SET profilepic = '${data.Location}' WHERE empid = '${personid}'`;
 
@@ -79,9 +78,9 @@ const UploadImage = async(req,callBack)=>{
       });
     });
 
-    return callBack({ msg: 'Uploaded Image' })
+    return callBack('Uploaded Image')
   } catch (error) {
-   return callBack(error)
+    return callBack(error)
   }  
 }
 
