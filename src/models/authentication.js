@@ -1,4 +1,5 @@
 var dbConn = require("../../config/db.config");
+const nodemailer = require('nodemailer')
 var crypto = require("crypto");
 var async = require("async");
 const bcrypt = require("bcrypt");
@@ -7,6 +8,20 @@ const { resolve } = require("path");
 require('aws-sdk/lib/maintenance_mode_message').suppress = true;
 require('dotenv').config()
 
+/** nodemailer configuration */
+var transport = nodemailer.createTransport({
+  service:'gmail',
+   auth: {
+            user:'bhanu.galo@gmail.com',
+            pass:'twod iufn mddq shsr'
+        }
+   });
+/** Generating Password */
+function generatePassword() {
+  /** Generate a random password */
+  const password = Math.floor(1000 + Math.random() * 9000);
+  return password; 
+}
 
 AWS.config.update({region: 'ap-south-1'})
 
@@ -17,28 +32,119 @@ const credentials = new AWS.Credentials({
 
 AWS.config.credentials = credentials
 
-function createEmployeeModel(userReqData, callBack) {
-  var query =
-  "call spAddEditemployee('" + JSON.stringify(userReqData) + "')";
-  dbConn.query(query, (err, results, fields) => {
-    if (err) {
-     console.log(err);
-      console.log("Error while creating news");
-      callBack(err);
-    } else {
-      console.log("Employee registered successfully.");
-      return callBack(null, results);
+const login = async(userReqData,callBack)=>{
+    const {empid,password} = userReqData.body
+
+    const query = `CALL spGetReportingManager('${empid}')`
+
+    try{
+  const result = await new Promise((resolve,reject)=>{
+        dbConn.query(query,(err,result)=>{
+           if(err){
+            console.log(err)
+            reject(err)
+           }else{
+           resolve(result)
+           }
+           
+        })
+  })
+
+console.log(result)
+ if(result[0].length){
+   try{
+    const data = await bcrypt.compare(password,result[0][0].password)
+
+    delete result[0][0]['password']
+   return data?callBack(null,result[0][0]):callBack(null,'Wrong Password Entered')
+   }catch(err){
+     return callBack(null,`something went wrong during comparing password`)
+   }
+ }else{
+return callBack(null,'Employee Does not exists')
+ }
+    }catch(err){
+    return  callBack(err)
     }
-  });
-};
+}
+async function createEmployeeModel(userReqData, callBack) {
+  const { employeeid, fullname, personalemailid, designation, personalmobilenumber } = userReqData.body;
+  const PhoneNumber = personalmobilenumber.split('');
+  const pass = `${PhoneNumber[6]}${PhoneNumber[7]}${PhoneNumber[8]}${PhoneNumber[9]}@${generatePassword()}`;
+  
+  if (
+    designation == 'HR' ||
+    designation == 'Reporting Manager' ||
+    designation == 'Admin' ||
+    designation == 'SuperAdmin'
+  ) {
+    try {
+      // Hash the password asynchronously
+      const hashedPassword = await bcrypt.hash(pass, 8);
+      userReqData.body.password = hashedPassword;
+    } catch (error) {
+      console.error('Error hashing password:', error);
+      return callBack( error);
+    }
+  }
+
+ 
+  
+  const query = "call spAddEditemployee('" + JSON.stringify(userReqData.body) + "')";
+  
+  try {
+    const results = await new Promise((resolve, reject) => {
+      dbConn.query(query, (err, results, fields) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+
+    // Send email
+    await transport.sendMail({
+      from: 'bhanu.galo@gmail.com',
+      cc: 'bhanu.galo@gmail.com',
+      to: personalemailid,
+      subject: 'Enrollment in Galo Energy Private Limited',
+      html: `<div style="position: relative; padding: 5px;">
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://galo.co.in/wp-content/uploads/2024/01/Galo-Energy-Logo-06.png'); background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 0.3; z-index: -1;"></div>
+        <div style="background-color: rgba(255, 255, 255, 0.8); padding: 20px; border-radius: 10px;">
+          <h3 style="color: #2f4f4f;">Welcome to Galo Energy Private Limited!</h3>
+          <p style="font-size: 16px;">Dear ${fullname},</p>      
+          <p style="font-size: 16px; margin-bottom: 0px;">Congratulations, you are now officially enrolled in Galo Energy Private Limited.</p>      
+          <p style="font-size: 16px;">Below are your enrollment details:</p>
+          <ul style="font-size: 16px;">
+            <li><strong>Employee ID:</strong> ${employeeid}</li>
+            <li><strong>Password:</strong> ${pass}</li>
+          </ul>
+          <p style="font-size: 16px; margin-bottom: 0px;">Please keep your Employee ID and Password confidential for security reasons.</p>        
+          <p style="font-size: 16px; margin-bottom: 0px;">If you have any questions or need assistance, feel free to contact us at <a href="mailto:info@galoenergy.com" style="color: #007bff;">info@galoenergy.com</a>.</p>
+          <p style="font-size: 16px;">We look forward to working with you!</p>
+          <br>
+          <p style="font-size: 16px;"><em>Sincerely,</em></p>
+          <p style="font-size: 16px;"><strong>Galo Energy HR Team</strong></p>
+        </div>
+      </div>`
+    });
+
+    console.log("Employee registered successfully.");
+    return callBack(null, results);
+  } catch (error) {
+    console.error("Error while creating news:", error);
+    return callBack(error);
+  }
+}
 
 
-const UploadImage = async(req, callBack) => {
+const UploadImage = async(req,callBack)=>{
   try {
     console.log("HIIIIIIIIIIIIIIIIIIIIIIIIII");
     console.log(req.file.buffer);
     const { personid } = req.query;
-    console.log(personid)
+      console.log(personid)
     const s3 = new AWS.S3({
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
@@ -47,7 +153,7 @@ const UploadImage = async(req, callBack) => {
     const params = {
       Bucket: process.env.AWS_BUCKET_1,
       Key: personid,
-      Body: req.file.buffer, // Assuming req.file.buffer is a Buffer type
+      Body: `${req.file.buffer}`,
       ACL: "public-read-write",
       ContentType: req.body.FileFormat
     };
@@ -59,11 +165,12 @@ const UploadImage = async(req, callBack) => {
           console.log(err)
           reject(err);
         } else {
+         
           resolve(data);
         }
       });
     });
-
+//console.log(data.Location)
     // Constructing the SQL query to update the person table
     const Profile = `UPDATE person SET profilepic = '${data.Location}' WHERE empid = '${personid}'`;
 
@@ -80,7 +187,7 @@ const UploadImage = async(req, callBack) => {
 
     return callBack('Uploaded Image')
   } catch (error) {
-    return callBack(error)
+   return callBack(error)
   }  
 }
 
@@ -89,7 +196,7 @@ const UploadJoiningForms = async(req,callBack)=>{
   try {
     console.log("HIIIIIIIIIIIIIIIIIIIIIIIIII");
     console.log(req.file);
-    const { personid } = req.body;
+    const { personid } = req.query;
       console.log(personid)
     const s3 = new AWS.S3({
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -130,7 +237,7 @@ const UploadJoiningForms = async(req,callBack)=>{
       });
     });
 
-    return callBack({ msg: 'Uploaded Image' })
+    return callBack('Uploaded File')
   } catch (error) {
    return callBack(error)
   }  
@@ -215,7 +322,7 @@ const {employeeid} = req.query
     return callBack('Face is not similar')
    }
    }catch(err){
-    return callBack({msg:err})
+    return callBack(err.Message)
    }
 
 //   try {
@@ -250,8 +357,9 @@ const {employeeid} = req.query
 };
 
 function getEmployeeDataModel(userReqData, callBack) {
+  const {personid} = userReqData
   var getData =
-    "CALL spGetAllEmployeeList()";
+    `CALL spGetAllEmployeeList('${personid}')`;
   dbConn.query(getData, (err, results, fields) => {
     if (err) {
       console.log("Error while geting data");
@@ -263,13 +371,123 @@ function getEmployeeDataModel(userReqData, callBack) {
   });
 };
 
+const sendSms = (req,callBack)=>{
+  AWS.config.update({region: 'ap-south-1'})
 
+const credentials = new AWS.Credentials({
+ accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+ secretAccessKey: process.env.AWS_ACCESS_KEY_SECRET
+})
+
+AWS.config.credentials = credentials
+
+  const       
+  publishSms = new AWS.SNS({apiVersion:'2010-03-31'}).publish({
+    // PhoneNumber:'+919718537367',                  
+    Message:'Hii',
+    TopicArn:'arn:aws:sns:ap-south-1:217206456407:Galo-Energy'
+    
+  }).promise()
+
+  
+  publishSms.then((data)=>{
+    callBack(data)
+  }).catch((err)=>{
+    callBack(err)
+  })
+
+}
+
+
+const getDepartmentList = ((req,callBack)=>{
+  var getData =
+  "CALL spGetDepartmentList()";
+dbConn.query(getData,async(err, results, fields) => {
+  if (err) {
+    console.log("Error while geting data");
+    callBack(err);
+  } else {
+    console.log("Data get successfully");
+    return callBack(null, results);
+  }
+});
+
+})
+
+const getDesignationList = ((req,callBack)=>{
+  const {departmentid} = req.body
+  console.log(req.body)
+  var getData =
+  `CALL spGetDesignationList('${departmentid}')`;
+dbConn.query(getData,async(err, results, fields) => {
+  if (err) {
+    console.log("Error while geting data");
+    callBack(err);
+  } else {
+    console.log("Data get successfully");
+    return callBack(null, results);
+  }
+});
+
+})
+
+
+const getReportingManagerList = ((req,callBack)=>{
+  console.log(req.body)
+  var getData =
+  `CALL spGetDesignation()`;
+dbConn.query(getData,async(err, results, fields) => {
+  if (err) {
+    console.log("Error while geting data");
+    callBack(err);
+  } else {
+    console.log("Data get successfully");
+    return callBack(null, results);
+  }
+});
+})
+
+
+
+const ExternalAttendance = async(req,callBack)=>{
+   const {empid}= req.body;
+   console.log(empid)
+try{
+const result = await new Promise((resolve,reject)=>{
+     const query = "call spAddAttendance('" + empid + "')";
+      dbConn.query(query, (err, results, fields) => {
+        if (err) {
+
+          reject(err)
+
+        } else {
+
+          console.log("Attendance successfully. External");
+        resolve(results)
+
+        }
+      
+      });
+    })
+console.log(result)
+   return callBack(null,'Attendance Marked.')
+
+  }catch(err){
+    return callBack('Attendance Failed.')
+  }
+}
 const NewsModel = { 
   
   createEmployeeModel: createEmployeeModel,
   getEmployeeDataModel: getEmployeeDataModel, 
   UploadImage,
   UploadJoiningForms,
- CompareFaces
+ CompareFaces,
+ sendSms,
+ getDepartmentList,
+ getDesignationList,
+ getReportingManagerList,
+ login,
+ ExternalAttendance
 }
 module.exports = NewsModel;

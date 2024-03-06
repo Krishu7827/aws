@@ -6,7 +6,6 @@ const dbConn = mysql.createPool({
   user: 'HRMGalo',
   password: 'FlkumUAxazRW',
   database: 'HRMGaloDev',
- 
 });
 
 dbConn.getConnection(function (error) {
